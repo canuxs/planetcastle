@@ -1,108 +1,72 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <title>Planet Castle</title>
     <style>
-        body { background-color: #000; color: #fff; font-family: sans-serif; margin: 0; padding: 20px; }
-        #logo { width: 200px; display: block; margin: 0 auto; }
-        .center { text-align: center; }
+        body { background-color: #000; color: #fff; font-family: sans-serif; }
+        .container { max-width: 800px; margin: 0 auto; text-align: center; }
+        .card { border: 1px solid #333; padding: 15px; margin: 10px; border-radius: 8px; }
         .hidden { display: none; }
-        input, textarea { width: 90%; max-width: 400px; display: block; margin: 10px auto; padding: 10px; background: #111; color: #fff; border: 1px solid #333; }
-        button { background: #333; color: white; border: none; padding: 10px 20px; cursor: pointer; margin: 5px; border-radius: 5px; }
-        button:hover { background: #555; }
-        .project-card { border: 1px solid #333; padding: 10px; margin: 10px auto; max-width: 400px; }
+        button { background: #333; color: #fff; border: none; padding: 10px 20px; cursor: pointer; border-radius: 5px; }
     </style>
 </head>
 <body>
 
-<div class="center">
-    <img src="castle.png" id="logo" alt="Logo">
+<div class="container">
+    <img src="castle.png" id="logo" width="150">
     <h1>Planet Castle</h1>
     
     <div id="auth-section">
-        <button id="login-btn">Sign In with Google</button>
+        <button id="login-btn">Sign in with Google</button>
     </div>
 
-    <div id="user-actions" class="hidden">
+    <nav id="user-actions" class="hidden">
         <button onclick="showForm('Deck')">Submit a Deck</button>
         <button onclick="showForm('Plugin')">Submit a Plugin</button>
         <button onclick="showForm('Party')">Invite to a Party</button>
+    </nav>
+
+    <div id="project-details" class="hidden">
+        <h2 id="detail-title"></h2>
+        <p id="detail-desc"></p>
+        <button onclick="goBack()">Back to Home</button>
     </div>
 
-    <div id="submit-form" class="hidden">
-        <h2 id="form-title"></h2>
-        <input type="text" id="title" placeholder="Title">
-        <textarea id="description" placeholder="Description"></textarea>
-        <input type="url" id="url" placeholder="URL">
-        <button onclick="saveData()">Submit</button>
-    </div>
-
-    <section id="newest-projects">
+    <section id="main-content">
         <h2>Newest Projects</h2>
         <div id="project-list"></div>
     </section>
 </div>
 
 <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
-    import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js";
-    import { getDatabase, ref, push, onValue, query, limitToLast } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-database.js";
+    // ... Firebase imports ...
+    // Firebase initialization...
 
-    const firebaseConfig = {
-        apiKey: "AIzaSyA3nBdbvDtad9LbFS2VLizeqhGc_ExqTL0",
-        authDomain: "planet-castle.firebaseapp.com",
-        databaseURL: "https://planet-castle-default-rtdb.europe-west1.firebasedatabase.app",
-        projectId: "planet-castle",
-        storageBucket: "planet-castle.firebasestorage.app",
-        messagingSenderId: "8331297800",
-        appId: "1:8331297800:web:766edb75abb4ca9de97dbd",
-        measurementId: "G-KVH8R12983"
+    // Projeyi görüntüleme fonksiyonu
+    window.viewProject = (title, desc) => {
+        document.getElementById('main-content').classList.add('hidden');
+        document.getElementById('project-details').classList.remove('hidden');
+        document.getElementById('detail-title').innerText = title;
+        document.getElementById('detail-desc').innerText = desc;
     };
 
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getDatabase(app);
-    const provider = new GoogleAuthProvider();
-
-    let currentType = "";
-    let currentUser = null;
-
-    // Giriş Kontrolü
-    onAuthStateChanged(auth, (user) => {
-        if (user) {
-            currentUser = user;
-            document.getElementById('auth-section').innerHTML = `Hello, ${user.displayName}`;
-            document.getElementById('user-actions').classList.remove('hidden');
-        }
-    });
-
-    document.getElementById('login-btn').onclick = () => signInWithPopup(auth, provider);
-
-    window.showForm = (type) => {
-        currentType = type;
-        document.getElementById('form-title').innerText = "Submit a " + type;
-        document.getElementById('submit-form').classList.remove('hidden');
+    window.goBack = () => {
+        document.getElementById('main-content').classList.remove('hidden');
+        document.getElementById('project-details').classList.add('hidden');
     };
 
-    window.saveData = () => {
-        const title = document.getElementById('title').value;
-        const description = document.getElementById('description').value;
-        const url = document.getElementById('url').value;
-
-        push(ref(db, currentType.toLowerCase() + 's'), {
-            title, description, url, author: currentUser.displayName, timestamp: Date.now()
-        }).then(() => alert("Uploaded successfully!"));
-    };
-
-    // Projeleri Listele (Basit listeleyici)
-    const projectListRef = ref(db, 'decks'); // Şimdilik sadece deckleri çekiyor
-    onValue(query(projectListRef, limitToLast(10)), (snapshot) => {
+    // Listeleme kısmını güncelle
+    onValue(ref(db, 'decks'), (snapshot) => {
         const list = document.getElementById('project-list');
         list.innerHTML = "";
         snapshot.forEach((child) => {
             const data = child.val();
-            list.innerHTML += `<div class="project-card"><h3>${data.title}</h3><p>${data.description}</p><a href="${data.url}" target="_blank">Git</a></div>`;
+            list.innerHTML += `
+                <div class="card">
+                    <h3>${data.title}</h3>
+                    <button onclick="viewProject('${data.title}', '${data.description}')">View Details</button>
+                </div>`;
         });
     });
 </script>
